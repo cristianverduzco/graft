@@ -1,0 +1,6 @@
+# Compiled binaries
+server
+main
+*.exe
+tmp/
+build-errors.log
