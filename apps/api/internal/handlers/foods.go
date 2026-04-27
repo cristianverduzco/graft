@@ -30,7 +30,13 @@ type checkFoodResponse struct {
 	Reasons      []foodReason `json:"reasons"`
 }
 
-// Fuzzy food lookup — similarity threshold 0.3 catches common misspellings.
+const (
+	verdictAvoid   = "avoid"
+	verdictCaution = "caution"
+	verdictOk      = "ok"
+)
+
+// 0.3 threshold: catches single-character typos without false positives on short names.
 const sqlFindFood = `
 	SELECT id, name
 	FROM foods
@@ -39,7 +45,6 @@ const sqlFindFood = `
 	LIMIT 1
 `
 
-// All interactions for a food, regardless of user profile (anonymous mode).
 const sqlAllInteractions = `
 	SELECT
 		fi.trigger_type,
@@ -136,7 +141,7 @@ func (h *Handler) CheckFood(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	reasons := make([]foodReason, 0)
+	reasons := make([]foodReason, 0, 8)
 	for rows.Next() {
 		var fr foodReason
 		if err := rows.Scan(
@@ -165,18 +170,15 @@ func (h *Handler) CheckFood(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// worstVerdict returns the most severe verdict across all matching rules.
-// avoid > caution > ok
 func worstVerdict(reasons []foodReason) string {
+	worst := verdictOk
 	for _, r := range reasons {
-		if r.Verdict == "avoid" {
-			return "avoid"
+		if r.Verdict == verdictAvoid {
+			return verdictAvoid
+		}
+		if r.Verdict == verdictCaution {
+			worst = verdictCaution
 		}
 	}
-	for _, r := range reasons {
-		if r.Verdict == "caution" {
-			return "caution"
-		}
-	}
-	return "ok"
+	return worst
 }
