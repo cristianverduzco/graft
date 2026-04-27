@@ -47,6 +47,7 @@ func main() {
 	r.Get("/readyz", h.Readyz)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/ping", h.Ping)
+		r.Post("/foods/check", h.CheckFood)
 	})
 
 	srv := &http.Server{
