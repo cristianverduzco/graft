@@ -2,10 +2,6 @@
   "name": "graft",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev:api": "cd apps/api && air",
     "dev:mobile": "cd apps/mobile && pnpm start",
