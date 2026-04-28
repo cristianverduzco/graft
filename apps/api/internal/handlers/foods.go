@@ -98,6 +98,50 @@ const sqlPersonalizedInteractions = `
 		CASE fi.severity WHEN 'high'   THEN 1 WHEN 'medium'  THEN 2 ELSE 3 END
 `
 
+type foodSearchResult struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+}
+
+const sqlSearchFoods = `
+	SELECT id, name, category
+	FROM foods
+	WHERE similarity(name, $1) > 0.2
+	ORDER BY similarity(name, $1) DESC
+	LIMIT 10
+`
+
+func (h *Handler) SearchFoods(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		writeJSON(w, http.StatusOK, []foodSearchResult{})
+		return
+	}
+
+	rows, err := h.db.Query(r.Context(), sqlSearchFoods, q)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
+		return
+	}
+	defer rows.Close()
+
+	results := make([]foodSearchResult, 0, 10)
+	for rows.Next() {
+		var f foodSearchResult
+		if err := rows.Scan(&f.ID, &f.Name, &f.Category); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scan failed"})
+			return
+		}
+		results = append(results, f)
+	}
+	if err := rows.Err(); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
+		return
+	}
+	writeJSON(w, http.StatusOK, results)
+}
+
 func (h *Handler) CheckFood(w http.ResponseWriter, r *http.Request) {
 	var req checkFoodRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
